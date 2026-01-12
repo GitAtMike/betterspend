@@ -1,6 +1,30 @@
-import { Text, View, StyleSheet } from "react-native";
+import { deleteTransaction, getAllTransactions, initDb, Transaction } from "@/src/db";
+import { useEffect } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 export default function HomeScreen() {
+
+  useEffect(() => {
+    async function run() {
+      await initDb();
+
+      const testTransaction: Transaction = {
+        id: "ID-One",
+        amount: 20.99,
+        merchant: "Walmart",
+        category: "Groceries",
+        account: "credit",
+        date: new Date().toISOString(),
+      };
+
+      const all = await getAllTransactions();
+      console.log("All transactions: ", all);
+      deleteTransaction("ID-One");
+    }
+
+    run();
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>BetterSpend</Text>
