@@ -1,20 +1,23 @@
 import { getAllTransactions, Transaction } from "@/src/db";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 
 export default function TransactionsScreen(){
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-    useEffect(() => {
-        async function load(){
-            const allTran = await getAllTransactions();
-            setTransactions(allTran);
-            console.log("Loaded transactions:", allTran.length);
-    }
+    useFocusEffect(
+        useCallback(() => {
+            async function load(){
+                const allTran = await getAllTransactions();
+                setTransactions(allTran);
+                console.log("Loaded transactions:", allTran.length);
+            }
 
-    load();
-}, []);
+            load();
+        }, [])
+    );
 
     return (
         <View style={styles.container}>

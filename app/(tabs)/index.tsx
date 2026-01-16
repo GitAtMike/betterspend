@@ -1,17 +1,6 @@
-import { initDb } from "@/src/db";
-import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 export default function HomeScreen() {
-
-  useEffect(() => {
-    async function run() {
-      await initDb();
-      console.log("DB initialized");
-    }
-
-    run();
-  }, []);
 
   return (
     <View style={styles.container}>

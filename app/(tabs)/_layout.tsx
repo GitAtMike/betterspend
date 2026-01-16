@@ -31,6 +31,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={30} name="creditcard.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="add"
+        options={{
+          title: 'Add',
+          tabBarIcon: ({ color }) => <IconSymbol size={30} name="plus.circle.fill" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
