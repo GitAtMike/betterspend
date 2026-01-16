@@ -37,9 +37,30 @@ export default function AddScreen(){
 
             <Pressable
                 style={styles.button}
+
                 onPress={() =>{
-                    console.log({merchant, amount, category});
+                    const parsedAmount = Number(amount);
+
+                    if(!merchant.trim()) {
+                        alert("Merchant is required");
+                    }
+
+                    if(!category.trim()) {
+                        alert("Category is required");
+                    }
+
+                    if(isNaN(parsedAmount) || parsedAmount <= 0) {
+                        alert("Amount must be a valid number greater than 0");
+                        return;
+                    }
+
+                    console.log("VALID", {
+                        merchant,
+                        amount,
+                        category
+                    });
                 }}
+
             >
                 <Text style={styles.buttonText}>Save</Text>
             </Pressable>

@@ -3,5 +3,19 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "cSpell.words": [
+    "betterspend",
+    "Consolas",
+    "creditcard",
+    "Hiragino",
+    "Maru",
+    "Meiryo",
+    "Menlo",
+    "Nativewind",
+    "Pressable",
+    "Segoe",
+    "Tamagui",
+    "unistyles"
+  ]
 }
