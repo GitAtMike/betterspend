@@ -32,7 +32,7 @@ export default function TransactionsScreen(){
                     <View style={styles.row}>
                         <Text style={styles.merchant}>{item.merchant}</Text>
                         <Text style={styles.meta}>
-                            ${item.amount.toFixed(2)} • {item.category} • {item.account}
+                            ${item.amount.toFixed(2)} • {item.category} • {item.account.charAt(0).toUpperCase() + item.account.slice(1)} • {new Date(item.date).toLocaleDateString("en-US")}
                         </Text>
                     </View>
                 )}
@@ -47,6 +47,6 @@ const styles = StyleSheet.create({
     container: { flex: 1, padding: 16, paddingTop: 24 },
     header: { fontSize: 18, fontWeight: "600", marginBottom: 12 },
     row: { paddingVertical: 12, borderBottomWidth: 1, borderColor: "#eee" },
-    merchant: { fontSize: 16, fontWeight: "600" },
-    meta: { marginTop: 4, fontSize: 13, color: "#666" },
+    merchant: { fontSize: 20, fontWeight: "600", color: "#ffffff", paddingVertical: 16 },
+    meta: { marginTop: 4, fontSize: 18, color: "#ffffff" },
 });

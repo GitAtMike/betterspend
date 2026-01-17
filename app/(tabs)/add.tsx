@@ -1,12 +1,50 @@
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { addTransaction, type AccountType, type Transaction } from "@/src/db";
+import * as Crypto from "expo-crypto";
+import { useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 export default function AddScreen(){
+    const router = useRouter();
 
     const [merchant, setMerchant] = useState("");
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState("");
 
+    const handleSave = useCallback(async () => {
+        const m = merchant.trim();
+        const c = category.trim();
+        const parsedAmount = Number(amount);
+
+        if(!m){
+            Alert.alert("Missing info", "Merchant is required.")
+            return;
+        }
+        if(!c){
+            Alert.alert("Missing info", "Category is required.")
+            return;
+        }
+        if(!Number.isFinite(parsedAmount) || parsedAmount <= 0){
+            Alert.alert("Invalid amount", "Enter a number greater than 0.")
+            return;
+        }
+
+        const trans: Transaction = {
+            id: Crypto.randomUUID(),
+            date: new Date().toISOString(),
+            merchant: m,
+            amount: parsedAmount,
+            category: c,
+            account: "debit" as AccountType,
+        };
+        await addTransaction(trans);
+
+        setMerchant("");
+        setAmount("");
+        setCategory("");
+
+        router.push("/transactions");
+    }, [merchant, amount, category, router]);
 
     return (
         <View style={styles.container}>
@@ -36,32 +74,7 @@ export default function AddScreen(){
             />
 
             <Pressable
-                style={styles.button}
-
-                onPress={() =>{
-                    const parsedAmount = Number(amount);
-
-                    if(!merchant.trim()) {
-                        alert("Merchant is required");
-                    }
-
-                    if(!category.trim()) {
-                        alert("Category is required");
-                    }
-
-                    if(isNaN(parsedAmount) || parsedAmount <= 0) {
-                        alert("Amount must be a valid number greater than 0");
-                        return;
-                    }
-
-                    console.log("VALID", {
-                        merchant,
-                        amount,
-                        category
-                    });
-                }}
-
-            >
+                style={styles.button} onPress={handleSave}>
                 <Text style={styles.buttonText}>Save</Text>
             </Pressable>
         </View>
@@ -71,7 +84,7 @@ export default function AddScreen(){
 const styles = StyleSheet.create({
     container: { flex: 1, alignItems: "center", justifyContent: "center" },
     title: { fontSize: 32, fontWeight: "700" },
-    subtitle: { marginTop: 8, fontSize: 16, color: "#ffffff" },
+    subtitle: { marginTop: 8, fontSize: 28, color: "#ffffff", paddingVertical: 14 },
 
     input: {
         width: "90%",
