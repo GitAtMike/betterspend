@@ -10,6 +10,7 @@ export default function AddScreen(){
     const [merchant, setMerchant] = useState("");
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState("");
+    const [account, setAccount] = useState<AccountType>("debit");
 
     const handleSave = useCallback(async () => {
         const m = merchant.trim();
@@ -73,6 +74,42 @@ export default function AddScreen(){
                 onChangeText={setCategory}
             />
 
+            <View style={styles.pillRow}>
+                <Pressable
+                    style={[styles.pill, account === "debit" &&  styles.pillSelected]}
+                    onPress={() => setAccount("debit")}
+                >
+                    <Text style={[
+                        styles.pillText, account === "debit" && styles.pillTextSelected]}
+                    >
+                        Debit
+                    </Text>
+                </Pressable>
+
+                <Pressable
+                    style={[styles.pill, account === "credit" &&  styles.pillSelected]}
+                    onPress={() => setAccount("credit")}
+                >
+                    <Text style={[
+                        styles.pillText, account === "credit" && styles.pillTextSelected]}
+                    >
+                        Credit
+                    </Text>
+                </Pressable>
+
+                <Pressable
+                    style={[styles.pill, account === "cash" &&  styles.pillSelected]}
+                    onPress={() => setAccount("cash")}
+                >
+                    <Text style={[
+                        styles.pillText, account === "cash" && styles.pillTextSelected]}
+                    >
+                        Cash
+                    </Text>
+                </Pressable>
+
+            </View>
+
             <Pressable
                 style={styles.button} onPress={handleSave}>
                 <Text style={styles.buttonText}>Save</Text>
@@ -109,4 +146,30 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "600",
     },
+
+    pillRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        width: "90%",
+        marginTop: 12,
+        marginBottom: 12,
+    },
+    pill: {
+        flex:1,
+        paddingVertical: 10,
+        borderRadius: 8,
+        alignItems: "center",
+    },
+    pillSelected:{
+        backgroundColor: "#0a84ff",
+    },
+    pillText:{
+        color: "#b0b0b0",
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    pillTextSelected:{
+        color: "white",
+    },
+
 });
