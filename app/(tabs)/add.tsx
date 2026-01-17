@@ -2,31 +2,51 @@ import { addTransaction, type AccountType, type Transaction } from "@/src/db";
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 export default function AddScreen(){
     const router = useRouter();
 
+
+const CATEGORIES = [
+    "Groceries",
+    "Rent",
+    "Dining",
+    "Gas",
+    "Entertainment",
+    "Utilities",
+    "Shopping",
+    "Travel",
+    "Health",
+    "Other",
+] as const;
+
+type Category = (typeof CATEGORIES)[number];
+
+
     const [merchant, setMerchant] = useState("");
     const [amount, setAmount] = useState("");
-    const [category, setCategory] = useState("");
+    const [category, setCategory] = useState<Category | null>(null);
     const [account, setAccount] = useState<AccountType>("debit");
+    const [categoryOpen , setCategoryOpen] = useState(false);
+
 
     const handleSave = useCallback(async () => {
         const m = merchant.trim();
-        const c = category.trim();
         const parsedAmount = Number(amount);
 
         if(!m){
             Alert.alert("Missing info", "Merchant is required.")
             return;
         }
-        if(!c){
-            Alert.alert("Missing info", "Category is required.")
-            return;
-        }
+
         if(!Number.isFinite(parsedAmount) || parsedAmount <= 0){
             Alert.alert("Invalid amount", "Enter a number greater than 0.")
+            return;
+        }
+
+        if(category === null){
+            Alert.alert("Missing info", "Please select a category.");
             return;
         }
 
@@ -35,17 +55,23 @@ export default function AddScreen(){
             date: new Date().toISOString(),
             merchant: m,
             amount: parsedAmount,
-            category: c,
+            category: category,
             account: "debit" as AccountType,
         };
         await addTransaction(trans);
 
         setMerchant("");
         setAmount("");
-        setCategory("");
+        setCategory("Other");
+        setAccount("debit")
 
         router.push("/transactions");
-    }, [merchant, amount, category, router]);
+    }, [merchant, amount, category, account, router]);
+
+    const selectCategory = useCallback((c: (typeof CATEGORIES)[number]) => {
+        setCategory(c);
+        setCategoryOpen(false);
+    }, [CATEGORIES]);
 
     return (
         <View style={styles.container}>
@@ -67,12 +93,15 @@ export default function AddScreen(){
                 keyboardType="numeric"
             />
 
-            <TextInput
-                style={styles.input}
-                placeholder="Category"
-                value={category}
-                onChangeText={setCategory}
-            />
+            <Pressable style={styles.input} onPress={() => setCategoryOpen(true)}>
+            <Text
+                style={[
+                    styles.categoryValue,
+                    category === null && styles.categoryPlaceholder,]}
+                    >
+                        {category ?? "Category"}
+                    </Text>
+            </Pressable>
 
             <View style={styles.pillRow}>
                 <Pressable
@@ -114,6 +143,30 @@ export default function AddScreen(){
                 style={styles.button} onPress={handleSave}>
                 <Text style={styles.buttonText}>Save</Text>
             </Pressable>
+
+
+            <Modal
+                visible={categoryOpen}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setCategoryOpen(false)}
+            >
+                <Pressable style={styles.modalBackdrop} onPress={() => setCategoryOpen(false)}>
+                    <Pressable style={styles.modalSheet} onPress={() => {}}>
+                        <Text style={styles.modalTitle}>Select Category</Text>
+
+                        <FlatList
+                            data={CATEGORIES}
+                            keyExtractor={(item) => item}
+                            renderItem={({ item }) => (
+                                <Pressable style={styles.categoryRow} onPress={() => selectCategory(item)}>
+                                    <Text style={styles.categoryRowText}>{item}</Text>
+                                </Pressable>
+                            )}
+                        />
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
@@ -172,4 +225,41 @@ const styles = StyleSheet.create({
         color: "white",
     },
 
+    categoryValue: {
+        color: "white",
+        fontSize: 16,
+    },
+
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.55)",
+        justifyContent: "flex-end",
+    },
+    modalSheet: {
+        backgroundColor: "#1c1c1e",
+        paddingTop: 12,
+        paddingHorizontal: 16,
+        paddingBottom: 24,
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
+        maxHeight: "60%",
+    },
+    modalTitle: {
+        color: "white",
+        fontSize: 16,
+        fontWeight: "700",
+        marginBottom: 12,
+    },
+    categoryRow: {
+        paddingVertical: 14,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: "#333",
+    },
+    categoryRowText: {
+        color: "white",
+        fontSize: 16,
+    },
+    categoryPlaceholder: {
+        color: "#888",
+    },
 });
