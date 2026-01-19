@@ -49,7 +49,7 @@ export async function addTransaction(tx: Transaction): Promise<void> {
   await d.runAsync(
     `INSERT INTO transactions (id, amount, merchant, category, account, date)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [tx.id, tx.amount, tx.merchant, tx.category, tx.account, tx.date]
+    [tx.id, tx.amount, tx.merchant, tx.category, tx.account, tx.date],
   );
 }
 
@@ -58,7 +58,7 @@ export async function getAllTransactions(): Promise<Transaction[]> {
   const rows = await d.getAllAsync<Transaction>(
     `SELECT id, amount, merchant, category, account, date
      FROM transactions
-     ORDER BY date DESC`
+     ORDER BY date DESC`,
   );
   return rows;
 }
@@ -66,4 +66,14 @@ export async function getAllTransactions(): Promise<Transaction[]> {
 export async function deleteTransaction(id: string): Promise<void> {
   const d = getDb();
   await d.runAsync(`DELETE FROM transactions WHERE id = ?`, [id]);
+}
+
+export async function updateTransaction(tx: Transaction): Promise<void> {
+  const d = getDb();
+  await d.runAsync(
+    `UPDATE transactions
+    SET amount = ?, merchant = ?, category = ?, account = ?, date = ?
+    WHERE id = ?`,
+    [tx.amount, tx.merchant, tx.category, tx.account, tx.date, tx.id],
+  );
 }
