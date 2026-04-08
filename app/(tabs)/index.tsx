@@ -1,3 +1,4 @@
+import DonutChart from "@/components/donutChart";
 import { getAllTransactions, type Transaction } from "@/src/db";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -70,6 +71,14 @@ export default function HomeScreen() {
     (a, b) => b[1] - a[1],
   );
   const maxAmount = sortedCategories[0]?.[1] ?? 1;
+  const chartData = sortedCategories.map(([category, amount]) => {
+    // changes shape from array to object, acts as a "slice" in pie chart
+    return {
+      label: category,
+      value: amount,
+      color: CATEGORY_COLORS[category],
+    };
+  });
 
   return (
     <LinearGradient colors={["#0a0f1e", "#000000"]} style={styles.container}>
@@ -119,6 +128,9 @@ export default function HomeScreen() {
                 </View>
               );
             })}
+            <View style={styles.chartContainer}>
+              <DonutChart data={chartData} size={220} strokeWidth={40} />
+            </View>
           </View>
         )}
 
@@ -141,6 +153,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  chartContainer: { alignItems: "center", marginTop: 16 },
   content: { padding: 24, paddingBottom: 48 },
 
   greeting: { fontSize: 28, fontWeight: "700", color: "#fff", marginTop: 16 },
