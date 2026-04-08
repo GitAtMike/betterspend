@@ -1,36 +1,56 @@
 import { addTransaction, type AccountType, type Transaction } from "@/src/db";
 import * as Crypto from "expo-crypto";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
+
+const CATEGORIES = [
+  "Groceries",
+  "Rent",
+  "Dining",
+  "Gas",
+  "Entertainment",
+  "Utilities",
+  "Shopping",
+  "Travel",
+  "Health",
+  "Other",
+] as const;
+
+type Category = (typeof CATEGORIES)[number];
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  Groceries: "🛒",
+  Rent: "🏠",
+  Dining: "🍽️",
+  Gas: "⛽",
+  Entertainment: "🎬",
+  Utilities: "💡",
+  Shopping: "🛍️",
+  Travel: "✈️",
+  Health: "❤️",
+  Other: "📦",
+};
+
+const ACCOUNT_COLORS: Record<string, string> = {
+  debit: "#30d158",
+  credit: "#0a84ff",
+  cash: "#ff9f0a",
+};
 
 export default function AddScreen() {
   const router = useRouter();
-
-  const CATEGORIES = [
-    "Groceries",
-    "Rent",
-    "Dining",
-    "Gas",
-    "Entertainment",
-    "Utilities",
-    "Shopping",
-    "Travel",
-    "Health",
-    "Other",
-  ] as const;
-
-  type Category = (typeof CATEGORIES)[number];
-
   const [merchant, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<Category | null>(null);
@@ -40,253 +60,229 @@ export default function AddScreen() {
   const handleSave = useCallback(async () => {
     const m = merchant.trim();
     const parsedAmount = Number(amount);
-
     if (!m) {
       Alert.alert("Missing info", "Merchant is required.");
       return;
     }
-
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       Alert.alert("Invalid amount", "Enter a number greater than 0.");
       return;
     }
-
-    if (category === null) {
+    if (!category) {
       Alert.alert("Missing info", "Please select a category.");
       return;
     }
 
-    const trans: Transaction = {
+    const tx: Transaction = {
       id: Crypto.randomUUID(),
       date: new Date().toISOString(),
       merchant: m,
       amount: parsedAmount,
-      category: category,
+      category,
       account,
     };
-    await addTransaction(trans);
-
+    await addTransaction(tx);
     setMerchant("");
     setAmount("");
-    setCategory("Other");
+    setCategory(null);
     setAccount("debit");
-
     router.back();
   }, [merchant, amount, category, account, router]);
 
-  const selectCategory = useCallback(
-    (c: (typeof CATEGORIES)[number]) => {
-      setCategory(c);
-      setCategoryOpen(false);
-    },
-    [CATEGORIES],
-  );
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>BetterSpend</Text>
-      <Text style={styles.subtitle}>Add Transaction</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Merchant"
-        value={merchant}
-        onChangeText={setMerchant}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Amount"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="numeric"
-      />
-
-      <Pressable style={styles.input} onPress={() => setCategoryOpen(true)}>
-        <Text
-          style={[
-            styles.categoryValue,
-            category === null && styles.categoryPlaceholder,
-          ]}
-        >
-          {category ?? "Category"}
-        </Text>
-      </Pressable>
-
-      <View style={styles.pillRow}>
-        <Pressable
-          style={[styles.pill, account === "debit" && styles.pillSelected]}
-          onPress={() => setAccount("debit")}
-        >
-          <Text
-            style={[
-              styles.pillText,
-              account === "debit" && styles.pillTextSelected,
-            ]}
-          >
-            Debit
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.pill, account === "credit" && styles.pillSelected]}
-          onPress={() => setAccount("credit")}
-        >
-          <Text
-            style={[
-              styles.pillText,
-              account === "credit" && styles.pillTextSelected,
-            ]}
-          >
-            Credit
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.pill, account === "cash" && styles.pillSelected]}
-          onPress={() => setAccount("cash")}
-        >
-          <Text
-            style={[
-              styles.pillText,
-              account === "cash" && styles.pillTextSelected,
-            ]}
-          >
-            Cash
-          </Text>
-        </Pressable>
-      </View>
-
-      <Pressable style={styles.button} onPress={handleSave}>
-        <Text style={styles.buttonText}>Save</Text>
-      </Pressable>
-
-      <Modal
-        visible={categoryOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCategoryOpen(false)}
+    <LinearGradient colors={["#0a0f1e", "#000000"]} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setCategoryOpen(false)}
-        >
-          <Pressable style={styles.modalSheet} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Select Category</Text>
+        <Text style={styles.header}>Add Transaction</Text>
+        <Text style={styles.subHeader}>Log a new expense</Text>
 
-            <FlatList
-              data={CATEGORIES}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={styles.categoryRow}
-                  onPress={() => selectCategory(item)}
-                >
-                  <Text style={styles.categoryRowText}>{item}</Text>
-                </Pressable>
-              )}
-            />
-          </Pressable>
+        <Text style={styles.label}>Merchant</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Starbucks"
+          placeholderTextColor="#555"
+          value={merchant}
+          onChangeText={setMerchant}
+        />
+
+        <Text style={styles.label}>Amount</Text>
+        <View style={styles.amountRow}>
+          <Text style={styles.currencySymbol}>$</Text>
+          <TextInput
+            style={styles.amountInput}
+            placeholder="0.00"
+            placeholderTextColor="#555"
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+          />
+        </View>
+
+        <Text style={styles.label}>Category</Text>
+        <Pressable style={styles.input} onPress={() => setCategoryOpen(true)}>
+          <Text style={category ? styles.inputValue : styles.inputPlaceholder}>
+            {category
+              ? `${CATEGORY_EMOJI[category]} ${category}`
+              : "Select a category"}
+          </Text>
         </Pressable>
-      </Modal>
-    </View>
+
+        <Text style={styles.label}>Account</Text>
+        <View style={styles.pillRow}>
+          {(["debit", "credit", "cash"] as AccountType[]).map((a) => (
+            <Pressable
+              key={a}
+              style={[
+                styles.pill,
+                account === a && { backgroundColor: ACCOUNT_COLORS[a] },
+              ]}
+              onPress={() => setAccount(a)}
+            >
+              <Text
+                style={[
+                  styles.pillText,
+                  account === a && styles.pillTextSelected,
+                ]}
+              >
+                {a.charAt(0).toUpperCase() + a.slice(1)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Pressable style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save Transaction</Text>
+        </Pressable>
+
+        <Modal
+          visible={categoryOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setCategoryOpen(false)}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setCategoryOpen(false)}
+          >
+            <Pressable style={styles.sheet} onPress={() => {}}>
+              <Text style={styles.sheetTitle}>Select Category</Text>
+              <FlatList
+                data={CATEGORIES}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.sheetRow}
+                    onPress={() => {
+                      setCategory(item);
+                      setCategoryOpen(false);
+                    }}
+                  >
+                    <Text style={styles.sheetRowText}>
+                      {CATEGORY_EMOJI[item]} {item}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 32, fontWeight: "700" },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 28,
-    color: "#ffffff",
-    paddingVertical: 14,
+  container: { flex: 1 },
+  content: { padding: 24, paddingBottom: 48 },
+
+  header: { fontSize: 28, fontWeight: "700", color: "#fff", marginTop: 16 },
+  subHeader: { fontSize: 15, color: "#8e8e93", marginTop: 4, marginBottom: 32 },
+
+  label: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8e8e93",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   input: {
-    width: "90%",
     backgroundColor: "#1c1c1e",
-    color: "white",
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    marginBottom: 14,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+    color: "#fff",
   },
+  inputValue: { color: "#fff", fontSize: 16 },
+  inputPlaceholder: { color: "#555", fontSize: 16 },
 
-  button: {
-    width: "90%",
-    backgroundColor: "#0a84ff",
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  pillRow: {
+  amountRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    width: "90%",
-    marginTop: 12,
-    marginBottom: 12,
+    alignItems: "center",
+    backgroundColor: "#1c1c1e",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
+  currencySymbol: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#fff",
+    marginRight: 8,
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#fff",
+    paddingVertical: 16,
+  },
+
+  pillRow: { flexDirection: "row", gap: 10, marginBottom: 32 },
   pill: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    backgroundColor: "#1c1c1e",
+  },
+  pillText: { color: "#8e8e93", fontSize: 14, fontWeight: "600" },
+  pillTextSelected: { color: "#fff" },
+
+  saveButton: {
+    backgroundColor: "#0a84ff",
+    borderRadius: 14,
+    paddingVertical: 18,
     alignItems: "center",
   },
-  pillSelected: {
-    backgroundColor: "#0a84ff",
-  },
-  pillText: {
-    color: "#b0b0b0",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  pillTextSelected: {
-    color: "white",
-  },
-
-  categoryValue: {
-    color: "white",
-    fontSize: 16,
-  },
+  saveButtonText: { color: "#fff", fontSize: 17, fontWeight: "700" },
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
     justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
-  modalSheet: {
+  sheet: {
     backgroundColor: "#1c1c1e",
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
     maxHeight: "60%",
   },
-  modalTitle: {
-    color: "white",
-    fontSize: 16,
+  sheetTitle: {
+    fontSize: 18,
     fontWeight: "700",
-    marginBottom: 12,
+    color: "#fff",
+    marginBottom: 16,
   },
-  categoryRow: {
+  sheetRow: {
     paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#333",
+    borderBottomWidth: 1,
+    borderColor: "#2c2c2e",
   },
-  categoryRowText: {
-    color: "white",
-    fontSize: 16,
-  },
-  categoryPlaceholder: {
-    color: "#888",
-  },
+  sheetRowText: { color: "#fff", fontSize: 16 },
 });
