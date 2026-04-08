@@ -1,50 +1,111 @@
-# Welcome to your Expo app 👋
+# BetterSpend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cross-platform personal finance tracker built with React Native, Expo, and TypeScript. Log transactions by merchant, amount, category, and account type — with full create, edit, and delete support. Runs on iOS, Android, and web.
 
-## Get started
+---
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- Add transactions with merchant, amount, category, and account type (debit/credit/cash)
+- View all transactions sorted by date, newest first
+- Edit or delete any transaction via a slide-up modal
+- Date picker for editing transaction dates
+- Persistent storage — SQLite on mobile, localStorage on web
+- Dark mode support via system color scheme
+- Haptic feedback on tab navigation (iOS/Android)
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## Tech Stack
 
-In the output, you'll find options to open the app in a
+| Layer             | Technology                                    |
+| ----------------- | --------------------------------------------- |
+| Framework         | [Expo](https://expo.dev) ~54 with Expo Router |
+| Language          | TypeScript                                    |
+| UI                | React Native                                  |
+| Database (mobile) | expo-sqlite (SQLite via WAL mode)             |
+| Database (web)    | localStorage (platform-specific fallback)     |
+| Navigation        | Expo Router file-based tabs                   |
+| Icons             | SF Symbols via `@expo/vector-icons`           |
+| Date Picker       | `@react-native-community/datetimepicker`      |
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Project Structure
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+betterspend/
+├── app/
+│   ├── _layout.tsx          # Root layout — initializes DB, sets theme
+│   ├── modal.tsx            # Modal screen
+│   └── (tabs)/
+│       ├── _layout.tsx      # Tab bar configuration
+│       ├── index.tsx        # Home screen
+│       ├── add.tsx          # Add transaction screen
+│       └── transactions.tsx # Transaction list + edit modal
+├── src/
+│   ├── db.ts                # SQLite layer (iOS/Android)
+│   └── db.web.ts            # localStorage layer (web — auto-selected by Expo)
+├── components/              # Shared UI components
+├── constants/
+│   └── theme.ts             # Color tokens
+├── hooks/                   # Custom hooks (useColorScheme, etc.)
+├── metro.config.js          # Custom Metro config for web wasm exclusion
+└── app.json                 # Expo config
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## Getting Started
 
-To learn more about developing your project with Expo, look at the following resources:
+### Prerequisites
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- [Node.js](https://nodejs.org/) 18+
+- [Expo CLI](https://docs.expo.dev/get-started/installation/)
+- [Expo Go](https://expo.dev/client) on your phone (for mobile)
 
-## Join the community
+### Install
 
-Join our community of developers creating universal apps.
+```bash
+git clone https://github.com/GitAtMike/betterspend.git
+cd betterspend
+npm install
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Run
+
+```bash
+# Mobile (iOS/Android via Expo Go)
+npx expo start
+
+# Web
+npx expo start --web
+```
+
+For mobile, scan the QR code with Expo Go (Android) or the Camera app (iOS).
+
+---
+
+## Data Persistence
+
+BetterSpend uses a platform-specific storage strategy:
+
+- **iOS/Android** — SQLite via `expo-sqlite` with WAL journaling for performance
+- **Web** — `localStorage` via `src/db.web.ts`, automatically selected by Expo's Metro bundler
+
+Both layers expose the same async API (`initDb`, `addTransaction`, `getAllTransactions`, `updateTransaction`, `deleteTransaction`), so all screens work identically across platforms with no conditional logic in the UI.
+
+---
+
+## Categories
+
+Groceries, Rent, Dining, Gas, Entertainment, Utilities, Shopping, Travel, Health, Other
+
+---
+
+## Roadmap
+
+- [ ] Spending summary and charts by category
+- [ ] Monthly budget limits with alerts
+- [ ] CSV export
+- [ ] Bank sync via Plaid
