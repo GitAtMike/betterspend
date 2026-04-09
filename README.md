@@ -105,7 +105,7 @@ Groceries, Rent, Dining, Gas, Entertainment, Utilities, Shopping, Travel, Health
 
 ## Roadmap
 
-- [ ] Spending summary and charts by category
+- [x] Spending summary and charts by category
 - [ ] Monthly budget limits with alerts
 - [ ] CSV export
 - [ ] Bank sync via Plaid
