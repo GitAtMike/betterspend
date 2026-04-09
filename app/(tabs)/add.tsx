@@ -121,13 +121,37 @@ export default function AddScreen() {
         </View>
 
         <Text style={styles.label}>Category</Text>
-        <Pressable style={styles.input} onPress={() => setCategoryOpen(true)}>
-          <Text style={category ? styles.inputValue : styles.inputPlaceholder}>
-            {category
-              ? `${CATEGORY_EMOJI[category]} ${category}`
-              : "Select a category"}
-          </Text>
-        </Pressable>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 24,
+            width: "100%",
+          }}
+        >
+          <Pressable style={styles.input} onPress={() => setCategoryOpen(true)}>
+            <Text
+              style={category ? styles.inputValue : styles.inputPlaceholder}
+            >
+              {category
+                ? `${CATEGORY_EMOJI[category]} ${category}`
+                : "Select a category"}
+            </Text>
+          </Pressable>
+
+          {category && (
+            <Pressable
+              onPress={() => setCategory(null)}
+              style={{ marginLeft: 12 }}
+            >
+              <Text
+                style={{ color: "#ff3b30", fontSize: 16, fontWeight: "700" }}
+              >
+                ✕
+              </Text>
+            </Pressable>
+          )}
+        </View>
 
         <Text style={styles.label}>Account</Text>
         <View style={styles.pillRow}>
@@ -210,11 +234,12 @@ const styles = StyleSheet.create({
   },
 
   input: {
+    flex: 1,
     backgroundColor: "#1c1c1e",
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 0,
     color: "#fff",
   },
   inputValue: { color: "#fff", fontSize: 16 },

@@ -13,10 +13,17 @@ export type Transaction = {
   date: string;
 };
 
-const STORAGE_KEY = "betterspend_transactions";
+export type Budget = {
+  category: string;
+  amount: number;
+  threshold: number;
+};
 
-function loadAll(): Transaction[] {
-  const raw = localStorage.getItem(STORAGE_KEY);
+const STORAGE_KEY_TRANSACTIONS = "betterspend_transactions";
+const STORAGE_KEY_BUDGETS = "betterspend_budgets";
+
+function loadAllTransactions(): Transaction[] {
+  const raw = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
   if (!raw) return [];
   try {
     return JSON.parse(raw) as Transaction[];
@@ -25,29 +32,60 @@ function loadAll(): Transaction[] {
   }
 }
 
-function saveAll(txs: Transaction[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(txs));
+function loadAllBudgets(): Budget[] {
+  const raw = localStorage.getItem(STORAGE_KEY_BUDGETS);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as Budget[];
+  } catch {
+    return [];
+  }
 }
 
+function saveAllTransactions(txs: Transaction[]): void {
+  localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(txs));
+}
+
+function saveAllBudgets(txs: Budget[]): void {
+  localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(txs));
+}
 // No-op on web — nothing to initialize
 export async function initDb(): Promise<void> {}
 
 export async function addTransaction(tx: Transaction): Promise<void> {
-  const txs = loadAll();
+  const txs = loadAllTransactions();
   txs.push(tx);
-  saveAll(txs);
+  saveAllTransactions(txs);
 }
 
 export async function getAllTransactions(): Promise<Transaction[]> {
-  return loadAll().sort(
+  return loadAllTransactions().sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  saveAll(loadAll().filter((tx) => tx.id !== id));
+  saveAllTransactions(loadAllTransactions().filter((tx) => tx.id !== id));
 }
 
 export async function updateTransaction(tx: Transaction): Promise<void> {
-  saveAll(loadAll().map((t) => (t.id === tx.id ? tx : t)));
+  saveAllTransactions(
+    loadAllTransactions().map((t) => (t.id === tx.id ? tx : t)),
+  );
+}
+
+export async function setBudget(budget: Budget): Promise<void> {
+  const budgets = loadAllBudgets().filter(
+    (b) => b.category !== budget.category,
+  );
+  budgets.push(budget);
+  saveAllBudgets(budgets);
+}
+
+export async function getBudgets(): Promise<Budget[]> {
+  return loadAllBudgets().sort((a, b) => b.amount - a.amount);
+}
+
+export async function removeBudget(category: string): Promise<void> {
+  saveAllBudgets(loadAllBudgets().filter((tx) => tx.category !== category));
 }

@@ -12,6 +12,12 @@ export type Transaction = {
   date: string; // ISO string (e.g., new Date().toISOString())
 };
 
+export type Budget = {
+  category: string;
+  amount: number;
+  threshold: number;
+};
+
 let db: SQLite.SQLiteDatabase | null = null;
 
 /**
@@ -33,6 +39,12 @@ export async function initDb(): Promise<void> {
       category TEXT NOT NULL,
       account TEXT NOT NULL,
       date TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS budgets (
+      category TEXT PRIMARY KEY NOT NULL,
+      amount REAL NOT NULL,
+      threshold REAL NOT NULL
     );
   `);
 }
@@ -76,4 +88,28 @@ export async function updateTransaction(tx: Transaction): Promise<void> {
     WHERE id = ?`,
     [tx.amount, tx.merchant, tx.category, tx.account, tx.date, tx.id],
   );
+}
+
+export async function setBudget(tx: Budget): Promise<void> {
+  const d = getDb();
+  await d.runAsync(
+    `INSERT OR REPLACE INTO budgets (category, amount, threshold)
+     VALUES (?, ?, ?)`,
+    [tx.category, tx.amount, tx.threshold],
+  );
+}
+
+export async function getBudgets(): Promise<Budget[]> {
+  const d = getDb();
+  const rows = await d.getAllAsync<Budget>(
+    `SELECT category, amount, threshold
+     FROM budgets
+     ORDER BY amount DESC`,
+  );
+  return rows;
+}
+
+export async function removeBudget(category: string): Promise<void> {
+  const d = getDb();
+  await d.runAsync(`DELETE FROM budgets WHERE category = ?`, [category]);
 }

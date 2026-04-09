@@ -249,20 +249,46 @@ export default function TransactionsScreen() {
             />
 
             <Text style={styles.inputLabel}>Category</Text>
-            <Pressable
-              style={styles.input}
-              onPress={() => setCategoryOpen(true)}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 24,
+                width: "100%",
+              }}
             >
-              <Text
-                style={
-                  draftCategory ? styles.inputValue : styles.inputPlaceholder
-                }
+              <Pressable
+                style={styles.input}
+                onPress={() => setCategoryOpen(true)}
               >
-                {draftCategory
-                  ? `${CATEGORY_EMOJI[draftCategory]} ${draftCategory}`
-                  : "Select category"}
-              </Text>
-            </Pressable>
+                <Text
+                  style={
+                    draftCategory ? styles.inputValue : styles.inputPlaceholder
+                  }
+                >
+                  {draftCategory
+                    ? `${CATEGORY_EMOJI[draftCategory]} ${draftCategory}`
+                    : "Select a category"}
+                </Text>
+              </Pressable>
+
+              {draftCategory && (
+                <Pressable
+                  onPress={() => setDraftCategory(null)}
+                  style={{ marginLeft: 12 }}
+                >
+                  <Text
+                    style={{
+                      color: "#ff3b30",
+                      fontSize: 16,
+                      fontWeight: "700",
+                    }}
+                  >
+                    ✕
+                  </Text>
+                </Pressable>
+              )}
+            </View>
 
             <Text style={styles.inputLabel}>Account</Text>
             <View style={styles.pillRow}>
@@ -434,11 +460,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   input: {
+    flex: 1,
     backgroundColor: "#2c2c2e",
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    marginBottom: 16,
+    marginBottom: 0,
     color: "#fff",
   },
   inputValue: { color: "#fff", fontSize: 16 },
