@@ -119,6 +119,6 @@ Groceries, Rent, Dining, Gas, Entertainment, Utilities, Shopping, Travel, Health
 - [x] Spending summary and charts by category
 - [x] Monthly budget limits with warning thresholds
 - [x] Color-coded budget warnings on home screen
-- [ ] Overall budget progress on hero card
-- [ ] CSV export
+- [x] Overall budget progress on hero card
+- [x] CSV export
 - [ ] Bank sync via Plaid
