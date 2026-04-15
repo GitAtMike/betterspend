@@ -101,15 +101,12 @@ export default function HomeScreen() {
     byCategory[tx.category] = (byCategory[tx.category] ?? 0) + tx.amount;
   }
 
-  // Categories sorted by spend descending for bar chart and donut
+  // Categories sorted by spend descending
   const sortedCategories = Object.entries(byCategory).sort(
     (a, b) => b[1] - a[1],
   );
 
-  // Largest category spend — used to scale bar widths
-  const maxAmount = sortedCategories[0]?.[1] ?? 1;
-
-  // Data shaped for the DonutChart component
+  // Data shaped for the DonutChart component — always uses category colors
   const chartData = sortedCategories.map(([category, amount]) => ({
     label: category,
     value: amount,
@@ -119,32 +116,26 @@ export default function HomeScreen() {
   // Overall budget row (if set by the user)
   const overallBudget = budgets.find((b) => b.category === "overall");
 
-  // ─── Bar Color Logic ──────────────────────────────────────────────────────
+  // ─── Spending Color Logic ─────────────────────────────────────────────────
 
   /**
-   * Returns a color for a category's spending bar based on budget status.
-   * - No budget set → default category color
+   * Returns a color for a category's amount text based on budget status.
+   * - No budget set → white (neutral)
    * - Under threshold → green
    * - At or above threshold but under limit → yellow
    * - At or above limit → red
    *
    * @param cat - the category name to evaluate
    */
-  function getBarColor(cat: string): string {
-    let color = CATEGORY_COLORS[cat] ?? "#98989d";
+  function getSpendingColor(cat: string): string {
     const budget = budgets.find((b) => b.category === cat);
-    if (!budget) return color;
+    if (!budget) return "#ffffff";
 
     const thresholdDollarAmount = (budget.amount * budget.threshold) / 100;
 
-    if (byCategory[cat] < thresholdDollarAmount) {
-      color = "#30d158"; // green — under warning threshold
-    } else if (byCategory[cat] < budget.amount) {
-      color = "#ffd60a"; // yellow — past threshold but not over limit
-    } else {
-      color = "#ff3b30"; // red — over budget
-    }
-    return color;
+    if (byCategory[cat] < thresholdDollarAmount) return "#30d158";
+    if (byCategory[cat] < budget.amount) return "#ffd60a";
+    return "#ff3b30";
   }
 
   // ─── JSX ─────────────────────────────────────────────────────────────────
@@ -171,13 +162,14 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* ── Category Breakdown — bars + donut chart ── */}
+        {/* ── Category Breakdown ── */}
         {sortedCategories.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Spending by Category</Text>
 
+            {/* Category list — amount colored by budget status */}
             {sortedCategories.map(([cat, amount]) => {
-              const pct = amount / maxAmount;
+              const categoryBudget = budgets.find((b) => b.category === cat);
               return (
                 <View key={cat} style={styles.catRow}>
                   <Text style={styles.catEmoji}>
@@ -186,27 +178,39 @@ export default function HomeScreen() {
                   <View style={styles.catInfo}>
                     <View style={styles.catLabelRow}>
                       <Text style={styles.catName}>{cat}</Text>
-                      <Text style={styles.catAmount}>${amount.toFixed(2)}</Text>
-                    </View>
-                    <View style={styles.barTrack}>
-                      <View
+                      <Text
                         style={[
-                          styles.barFill,
-                          {
-                            width: `${pct * 100}%`,
-                            backgroundColor: getBarColor(cat),
-                          },
+                          styles.catAmount,
+                          { color: getSpendingColor(cat) },
                         ]}
-                      />
+                      >
+                        ${amount.toFixed(2)}
+                        {categoryBudget
+                          ? ` / $${categoryBudget.amount.toFixed(2)}`
+                          : ""}
+                      </Text>
                     </View>
                   </View>
                 </View>
               );
             })}
 
-            {/* Donut chart summary below the bars */}
+            {/* Donut chart + legend */}
             <View style={styles.chartContainer}>
               <DonutChart data={chartData} size={220} strokeWidth={40} />
+              <View style={styles.legend}>
+                {chartData.map((item) => (
+                  <View key={item.label} style={styles.legendItem}>
+                    <View
+                      style={[
+                        styles.legendDot,
+                        { backgroundColor: item.color },
+                      ]}
+                    />
+                    <Text style={styles.legendLabel}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         )}
@@ -281,8 +285,6 @@ const styles = StyleSheet.create({
   },
   catName: { fontSize: 15, fontWeight: "600", color: "#fff" },
   catAmount: { fontSize: 15, fontWeight: "600", color: "#fff" },
-  barTrack: { height: 6, backgroundColor: "#1c1c1e", borderRadius: 999 },
-  barFill: { height: 6, borderRadius: 999 },
 
   emptyState: { alignItems: "center", marginTop: 60 },
   emptyEmoji: { fontSize: 48, marginBottom: 16 },
@@ -293,4 +295,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptySubText: { fontSize: 14, color: "#8e8e93", textAlign: "center" },
+
+  legend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginTop: 16,
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+  },
+  legendLabel: {
+    fontSize: 13,
+    color: "#8e8e93",
+    fontWeight: "600",
+  },
 });
