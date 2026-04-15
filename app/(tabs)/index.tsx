@@ -1,5 +1,10 @@
 import DonutChart from "@/components/donutChart";
-import { getAllTransactions, type Transaction } from "@/src/db";
+import {
+  getAllTransactions,
+  getBudgets,
+  type Budget,
+  type Transaction,
+} from "@/src/db";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useState } from "react";
@@ -44,11 +49,21 @@ function getMonthName(): string {
 
 export default function HomeScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+
+  const loadData = useCallback(async () => {
+    const [allTransactions, allBudgets] = await Promise.all([
+      getAllTransactions(),
+      getBudgets(),
+    ]);
+    setTransactions(allTransactions);
+    setBudgets(allBudgets);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      getAllTransactions().then(setTransactions);
-    }, []),
+      loadData();
+    }, [loadData]),
   );
 
   // Filter to current month only
@@ -79,6 +94,29 @@ export default function HomeScreen() {
       color: CATEGORY_COLORS[category],
     };
   });
+
+  const overallBudget = budgets.find((b) => b.category === "overall");
+
+  function getBarColor(cat: string): string {
+    let color = CATEGORY_COLORS[cat] ?? "#98989d";
+    const budget = budgets.find((b) => b.category === cat);
+    if (!budget) {
+      return color;
+    }
+    let thresholdDollarAmount = (budget.amount * budget.threshold) / 100;
+
+    if (byCategory[cat] < thresholdDollarAmount) {
+      color = "#30d158";
+    } else if (
+      byCategory[cat] >= thresholdDollarAmount &&
+      byCategory[cat] < budget.amount
+    ) {
+      color = "#ffd60a";
+    } else if (byCategory[cat] >= budget.amount) {
+      color = "#ff3b30";
+    }
+    return color;
+  }
 
   return (
     <LinearGradient colors={["#0a0f1e", "#000000"]} style={styles.container}>
@@ -120,7 +158,10 @@ export default function HomeScreen() {
                       <View
                         style={[
                           styles.barFill,
-                          { width: `${pct * 100}%`, backgroundColor: color },
+                          {
+                            width: `${pct * 100}%`,
+                            backgroundColor: getBarColor(cat),
+                          },
                         ]}
                       />
                     </View>

@@ -1,27 +1,29 @@
 import {
-    getAllTransactions,
-    getBudgets,
-    removeBudget,
-    setBudget,
-    type Budget,
-    type Transaction,
+  getAllTransactions,
+  getBudgets,
+  removeBudget,
+  setBudget,
+  type Budget,
+  type Transaction,
 } from "@/src/db";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 import Slider from "@react-native-community/slider";
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
   Groceries: "#30d158",
@@ -64,7 +66,13 @@ const CATEGORY_EMOJI: Record<string, string> = {
   Other: "📦",
 };
 
+// ─── Screen ──────────────────────────────────────────────────────────────────
+
 export default function BudgetScreen() {
+  // ─── Refs ──────────────────────────────────────────────────────────────────
+  const scrollRef = useRef<ScrollView>(null);
+
+  // ─── State ─────────────────────────────────────────────────────────────────
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
@@ -73,6 +81,12 @@ export default function BudgetScreen() {
   const [threshold, setThreshold] = useState(80);
   const [categoryOpen, setCategoryOpen] = useState(false);
 
+  // ─── Data Loading ──────────────────────────────────────────────────────────
+
+  /**
+   * Loads budgets and transactions in parallel using Promise.all.
+   * Called on screen focus to ensure data is always fresh.
+   */
   const loadData = useCallback(async () => {
     const [allTransactions, allBudgets] = await Promise.all([
       getAllTransactions(),
@@ -88,6 +102,12 @@ export default function BudgetScreen() {
     }, [loadData]),
   );
 
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+
+  /**
+   * Validates and saves a new category budget.
+   * Uses INSERT OR REPLACE so saving over an existing category updates it.
+   */
   const handleSave = useCallback(async () => {
     const parsedAmount = Number(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
@@ -111,6 +131,10 @@ export default function BudgetScreen() {
     loadData();
   }, [category, amount, threshold, loadData]);
 
+  /**
+   * Validates and saves the overall monthly budget.
+   * Stored as a special budget row with category "overall".
+   */
   const handleSaveOverall = useCallback(async () => {
     const parsedAmount = Number(overallAmount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
@@ -128,6 +152,10 @@ export default function BudgetScreen() {
     loadData();
   }, [overallAmount, loadData]);
 
+  /**
+   * Removes a budget by category and refreshes the list.
+   * @param category - the category key to delete (e.g. "Dining" or "overall")
+   */
   const handleRemove = useCallback(
     async (category: string) => {
       await removeBudget(category);
@@ -136,27 +164,24 @@ export default function BudgetScreen() {
     [loadData],
   );
 
-  const now = new Date();
-  const monthlyTxs = transactions.filter((tx) => {
-    const d = new Date(tx.date);
-    return (
-      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    );
-  });
+  /**
+   * Pre-fills the form with an existing budget's values for editing.
+   * Scrolls to the top so the user sees the form.
+   * @param budget - the budget to edit
+   */
+  const handleEdit = useCallback((budget: Budget) => {
+    setCategory(budget.category as Category);
+    setAmount(String(budget.amount));
+    setThreshold(budget.threshold);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
 
-  const totalSpent = monthlyTxs.reduce((sum, tx) => sum + tx.amount, 0);
-  const overallBudget = budgets.find((b) => b.category === "overall");
-  const totalBudgets = budgets
-    .filter((b) => b.category !== "overall")
-    .reduce((sum, b) => sum + b.amount, 0);
-  const remainingBudget = (overallBudget?.amount ?? 0) - totalBudgets;
-
-  // Tally by category
-  const byCategory: Record<string, number> = {};
-  for (const tx of monthlyTxs) {
-    byCategory[tx.category] = (byCategory[tx.category] ?? 0) + tx.amount;
-  }
-
+  /**
+   * Updates the warning threshold for an existing budget without changing
+   * the category or amount.
+   * @param budget - the budget to update
+   * @param newValue - the new threshold percentage (0–100)
+   */
   const handleThresholdChange = useCallback(
     async (budget: Budget, newValue: number) => {
       await setBudget({
@@ -169,17 +194,53 @@ export default function BudgetScreen() {
     [loadData],
   );
 
+  // ─── Derived Data ──────────────────────────────────────────────────────────
+
+  // Filter transactions to the current month only
+  const now = new Date();
+  const monthlyTxs = transactions.filter((tx) => {
+    const d = new Date(tx.date);
+    return (
+      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    );
+  });
+
+  // Total spent this month across all categories
+  const totalSpent = monthlyTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
+  // Overall budget row (if set)
+  const overallBudget = budgets.find((b) => b.category === "overall");
+
+  // Sum of all category budgets (excluding overall)
+  const totalBudgets = budgets
+    .filter((b) => b.category !== "overall")
+    .reduce((sum, b) => sum + b.amount, 0);
+
+  // How much of the overall budget is still available to allocate
+  const remainingBudget = (overallBudget?.amount ?? 0) - totalBudgets;
+
+  // Spending tallied by category for the current month
+  const byCategory: Record<string, number> = {};
+  for (const tx of monthlyTxs) {
+    byCategory[tx.category] = (byCategory[tx.category] ?? 0) + tx.amount;
+  }
+
+  // ─── JSX ───────────────────────────────────────────────────────────────────
+
   return (
     <LinearGradient colors={["#0a0f1e", "#000000"]} style={styles.container}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        {/* ── Header ── */}
         <Text style={styles.header}>Set a Budget</Text>
         <Text style={styles.subHeader}>
           Set an overall budget or a budget for a specific category
         </Text>
 
+        {/* ── Overall Budget Form ── */}
         <Text style={styles.label}>Overall Budget Amount</Text>
         <View style={styles.amountRow}>
           <Text style={styles.currencySymbol}>$</Text>
@@ -197,6 +258,7 @@ export default function BudgetScreen() {
           <Text style={styles.saveButtonText}>Save Overall Budget</Text>
         </Pressable>
 
+        {/* ── Category Budget Form ── */}
         <Text style={[styles.label, { marginTop: 32 }]}>Category</Text>
         <View
           style={{
@@ -206,6 +268,7 @@ export default function BudgetScreen() {
             width: "100%",
           }}
         >
+          {/* Category selector — opens bottom sheet modal */}
           <Pressable style={styles.input} onPress={() => setCategoryOpen(true)}>
             <Text
               style={category ? styles.inputValue : styles.inputPlaceholder}
@@ -216,6 +279,7 @@ export default function BudgetScreen() {
             </Text>
           </Pressable>
 
+          {/* Clear selection button — only visible when a category is selected */}
           {category && (
             <Pressable
               onPress={() => setCategory(null)}
@@ -230,9 +294,13 @@ export default function BudgetScreen() {
           )}
         </View>
 
+        {/* Amount input — only visible after a category is selected */}
         {category && (
           <>
             <Text style={styles.label}>{category} Budget Amount</Text>
+
+            {/* If overall budget exists, show slider capped at remaining budget.
+                Otherwise show plain text input with no upper limit. */}
             {overallBudget ? (
               <>
                 <Slider
@@ -281,6 +349,8 @@ export default function BudgetScreen() {
             </Pressable>
           </>
         )}
+
+        {/* ── Active Budgets List ── */}
         {budgets.length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { marginTop: 32 }]}>
@@ -288,6 +358,7 @@ export default function BudgetScreen() {
             </Text>
             {budgets.map((budget) => (
               <View key={budget.category} style={styles.budgetCard}>
+                {/* Budget name and spent vs limit */}
                 <Text style={styles.cardTitle}>
                   {budget.category === "overall"
                     ? "Overall Budget"
@@ -301,6 +372,8 @@ export default function BudgetScreen() {
                   ).toFixed(2)}{" "}
                   / ${budget.amount.toFixed(2)}
                 </Text>
+
+                {/* Warning threshold slider */}
                 <Text style={styles.label}>
                   {" "}
                   Warning at {budget.threshold}% ($
@@ -317,17 +390,28 @@ export default function BudgetScreen() {
                   maximumTrackTintColor="#2c2c2e"
                   thumbTintColor="#ff3b30"
                 />
-                <Pressable
-                  style={styles.deleteButton}
-                  onPress={() => handleRemove(budget.category)}
-                >
-                  <Text style={styles.deleteButtonText}>Remove Budget</Text>
-                </Pressable>
+
+                {/* Card action buttons */}
+                <View style={styles.cardButtonRow}>
+                  <Pressable
+                    style={styles.deleteButton}
+                    onPress={() => handleRemove(budget.category)}
+                  >
+                    <Text style={styles.deleteButtonText}>Remove Budget</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.editButton}
+                    onPress={() => handleEdit(budget)}
+                  >
+                    <Text style={styles.editButtonText}>Edit Budget</Text>
+                  </Pressable>
+                </View>
               </View>
             ))}
           </>
         )}
 
+        {/* ── Category Picker Modal ── */}
         <Modal
           visible={categoryOpen}
           transparent
@@ -364,6 +448,8 @@ export default function BudgetScreen() {
     </LinearGradient>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -475,5 +561,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
     marginBottom: 16,
+  },
+
+  editButton: {
+    backgroundColor: "#0a84ff",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignSelf: "flex-end",
+    marginTop: 8,
+  },
+  editButtonText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+
+  cardButtonRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 8,
   },
 });
