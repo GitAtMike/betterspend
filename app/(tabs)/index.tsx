@@ -6,9 +6,19 @@ import {
   type Transaction,
 } from "@/src/db";
 import { useFocusEffect } from "@react-navigation/native";
+import * as FileSystem from "expo-file-system/legacy";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Sharing from "expo-sharing";
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -53,12 +63,27 @@ function getMonthName(): string {
   return new Date().toLocaleString("en-US", { month: "long" });
 }
 
+/** Returns a CSV with transaction info */
+function generateCSV(transactions: Transaction[]): string {
+  const headers = "Merchant,Amount,Category,Account,Date";
+
+  const rows = transactions.map(
+    (tx) =>
+      `${tx.merchant},${tx.amount},${tx.category},${tx.account},${new Date(tx.date).toLocaleDateString("en-US")}`,
+  );
+
+  return [headers, ...rows].join("\n");
+}
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   // ─── State ───────────────────────────────────────────────────────────────
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportRange, setExportRange] = useState<"month" | "3months" | "all">(
+    "month",
+  );
 
   // ─── Data Loading ─────────────────────────────────────────────────────────
 
@@ -80,6 +105,55 @@ export default function HomeScreen() {
       loadData();
     }, [loadData]),
   );
+
+  // ─── Handlers ─────────────────────────────────────────────────────────
+
+  const handleExport = useCallback(async () => {
+    let filtered: Transaction[];
+    const threeMonthsAgo = new Date(now);
+    threeMonthsAgo.setMonth(now.getMonth() - 3);
+
+    if (exportRange === "all") {
+      filtered = transactions;
+    } else if (exportRange === "month") {
+      filtered = transactions.filter((tx) => {
+        const d = new Date(tx.date);
+        return (
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
+        );
+      });
+    } else {
+      filtered = transactions.filter(
+        (tx) => new Date(tx.date) >= threeMonthsAgo,
+      );
+    }
+
+    const csv = generateCSV(filtered);
+
+    if (Platform.OS === "web") {
+      // Web: use Blob download
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "betterspend.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // Mobile: write to file system then share
+      const path = FileSystem.documentDirectory + "betterspend.csv";
+      await FileSystem.writeAsStringAsync(path, csv, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      await Sharing.shareAsync(path, {
+        mimeType: "text/csv",
+        dialogTitle: "Export Transactions",
+      });
+    }
+
+    setExportOpen(false);
+  }, [exportRange, transactions]);
 
   // ─── Derived Data ─────────────────────────────────────────────────────────
 
@@ -165,7 +239,22 @@ export default function HomeScreen() {
         {/* ── Category Breakdown ── */}
         {sortedCategories.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Spending by Category</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Text style={styles.sectionTitle}>Spending by Category</Text>
+              <Pressable
+                onPress={() => setExportOpen(true)}
+                style={styles.exportButton}
+              >
+                <Text style={styles.exportButtonText}>Export</Text>
+              </Pressable>
+            </View>
 
             {/* Category list — amount colored by budget status */}
             {sortedCategories.map(([cat, amount]) => {
@@ -227,6 +316,56 @@ export default function HomeScreen() {
             </Text>
           </View>
         )}
+
+        {/* ── Export Modal ── */}
+        <Modal
+          visible={exportOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setExportOpen(false)}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setExportOpen(false)}
+          >
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <Text style={styles.modalTitle}>Export Transactions</Text>
+
+              <Text style={styles.label}>Date Range</Text>
+
+              {(["month", "3months", "all"] as const).map((range) => (
+                <Pressable
+                  key={range}
+                  style={[
+                    styles.rangeOption,
+                    exportRange === range && styles.rangeOptionSelected,
+                  ]}
+                  onPress={() => setExportRange(range)}
+                >
+                  <Text
+                    style={[
+                      styles.rangeOptionText,
+                      exportRange === range && styles.rangeOptionTextSelected,
+                    ]}
+                  >
+                    {range === "month"
+                      ? "This Month"
+                      : range === "3months"
+                        ? "Last 3 Months"
+                        : "All Time"}
+                  </Text>
+                </Pressable>
+              ))}
+
+              <Pressable
+                style={styles.exportSubmitButton}
+                onPress={handleExport}
+              >
+                <Text style={styles.exportSubmitButtonText}>Download CSV</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </ScrollView>
     </LinearGradient>
   );
@@ -272,7 +411,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#fff",
-    marginBottom: 16,
   },
 
   catRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
@@ -318,4 +456,56 @@ const styles = StyleSheet.create({
     color: "#8e8e93",
     fontWeight: "600",
   },
+
+  exportButton: {
+    backgroundColor: "#1c1c1e",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  exportButtonText: { color: "#0a84ff", fontSize: 13, fontWeight: "700" },
+
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  modalCard: {
+    backgroundColor: "#1c1c1e",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8e8e93",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  rangeOption: {
+    backgroundColor: "#2c2c2e",
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  rangeOptionSelected: { backgroundColor: "#0a84ff" },
+  rangeOptionText: { color: "#8e8e93", fontSize: 15, fontWeight: "600" },
+  rangeOptionTextSelected: { color: "#fff" },
+  exportSubmitButton: {
+    backgroundColor: "#0a84ff",
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  exportSubmitButtonText: { color: "#fff", fontSize: 17, fontWeight: "700" },
 });
