@@ -15,6 +15,8 @@ import {
   View,
 } from "react-native";
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const CATEGORIES = [
   "Groceries",
   "Rent",
@@ -49,17 +51,28 @@ const ACCOUNT_COLORS: Record<string, string> = {
   cash: "#ff9f0a",
 };
 
+// ─── Screen ──────────────────────────────────────────────────────────────────
+
 export default function AddScreen() {
   const router = useRouter();
+
+  // ─── State ─────────────────────────────────────────────────────────────────
   const [merchant, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<Category | null>(null);
   const [account, setAccount] = useState<AccountType>("debit");
   const [categoryOpen, setCategoryOpen] = useState(false);
 
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+
+  /**
+   * Validates form fields, builds a Transaction object, saves it to the DB,
+   * resets the form, and navigates back to the previous screen.
+   */
   const handleSave = useCallback(async () => {
     const m = merchant.trim();
     const parsedAmount = Number(amount);
+
     if (!m) {
       Alert.alert("Missing info", "Merchant is required.");
       return;
@@ -82,12 +95,17 @@ export default function AddScreen() {
       account,
     };
     await addTransaction(tx);
+
+    // Reset form
     setMerchant("");
     setAmount("");
     setCategory(null);
     setAccount("debit");
+
     router.back();
   }, [merchant, amount, category, account, router]);
+
+  // ─── JSX ───────────────────────────────────────────────────────────────────
 
   return (
     <LinearGradient colors={["#0a0f1e", "#000000"]} style={styles.container}>
@@ -95,9 +113,11 @@ export default function AddScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        {/* ── Header ── */}
         <Text style={styles.header}>Add Transaction</Text>
         <Text style={styles.subHeader}>Log a new expense</Text>
 
+        {/* ── Merchant Input ── */}
         <Text style={styles.label}>Merchant</Text>
         <TextInput
           style={styles.input}
@@ -107,6 +127,7 @@ export default function AddScreen() {
           onChangeText={setMerchant}
         />
 
+        {/* ── Amount Input ── */}
         <Text style={styles.label}>Amount</Text>
         <View style={styles.amountRow}>
           <Text style={styles.currencySymbol}>$</Text>
@@ -120,6 +141,7 @@ export default function AddScreen() {
           />
         </View>
 
+        {/* ── Category Selector ── */}
         <Text style={styles.label}>Category</Text>
         <View
           style={{
@@ -129,6 +151,7 @@ export default function AddScreen() {
             width: "100%",
           }}
         >
+          {/* Opens the category picker bottom sheet */}
           <Pressable style={styles.input} onPress={() => setCategoryOpen(true)}>
             <Text
               style={category ? styles.inputValue : styles.inputPlaceholder}
@@ -139,6 +162,7 @@ export default function AddScreen() {
             </Text>
           </Pressable>
 
+          {/* Clear button — only shown when a category is selected */}
           {category && (
             <Pressable
               onPress={() => setCategory(null)}
@@ -153,6 +177,7 @@ export default function AddScreen() {
           )}
         </View>
 
+        {/* ── Account Type Pills ── */}
         <Text style={styles.label}>Account</Text>
         <View style={styles.pillRow}>
           {(["debit", "credit", "cash"] as AccountType[]).map((a) => (
@@ -176,10 +201,12 @@ export default function AddScreen() {
           ))}
         </View>
 
+        {/* ── Save Button ── */}
         <Pressable style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Save Transaction</Text>
         </Pressable>
 
+        {/* ── Category Picker Modal ── */}
         <Modal
           visible={categoryOpen}
           transparent
@@ -216,6 +243,8 @@ export default function AddScreen() {
     </LinearGradient>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

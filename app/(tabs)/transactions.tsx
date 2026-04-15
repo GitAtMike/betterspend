@@ -7,7 +7,6 @@ import {
 } from "@/src/db";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
@@ -21,6 +20,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
   "Groceries",
@@ -56,19 +57,34 @@ const ACCOUNT_COLORS: Record<string, string> = {
   cash: "#ff9f0a",
 };
 
+// ─── Screen ──────────────────────────────────────────────────────────────────
+
 export default function TransactionsScreen() {
+  // ─── State ─────────────────────────────────────────────────────────────────
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  // Edit modal state
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
+
+  // Draft fields — temporary values while the user is editing
   const [draftMerchant, setDraftMerchant] = useState("");
   const [draftAmount, setDraftAmount] = useState("");
   const [draftCategory, setDraftCategory] = useState<Category | null>(null);
   const [draftAccount, setDraftAccount] = useState<AccountType>("debit");
   const [draftDate, setDraftDate] = useState<Date>(new Date());
+
+  // Picker visibility
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
+  // ─── Data Loading ──────────────────────────────────────────────────────────
+
+  /**
+   * Fetches all transactions from the DB and updates state.
+   * Called on screen focus to ensure the list stays fresh.
+   */
   const loadTransactions = useCallback(async () => {
     const all = await getAllTransactions();
     setTransactions(all);
@@ -80,6 +96,9 @@ export default function TransactionsScreen() {
     }, [loadTransactions]),
   );
 
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+
+  /** Closes the edit modal and resets all draft state back to defaults. */
   const closeEdit = useCallback(() => {
     setIsEditOpen(false);
     setSelectedTransaction(null);
@@ -92,6 +111,10 @@ export default function TransactionsScreen() {
     setDatePickerOpen(false);
   }, []);
 
+  /**
+   * Opens the edit modal pre-filled with the given transaction's values.
+   * @param tx - the transaction to edit
+   */
   const openEditFor = useCallback((tx: Transaction) => {
     setSelectedTransaction(tx);
     setDraftMerchant(tx.merchant);
@@ -102,11 +125,15 @@ export default function TransactionsScreen() {
     setIsEditOpen(true);
   }, []);
 
+  /** Formats the draft date for display in the date input field. */
   const formattedDraftDate = useMemo(
     () => draftDate.toLocaleDateString("en-US"),
     [draftDate],
   );
 
+  /**
+   * Validates draft fields, saves the updated transaction, and closes the modal.
+   */
   const handleSave = useCallback(async () => {
     if (!selectedTransaction) return;
     const m = draftMerchant.trim();
@@ -144,6 +171,9 @@ export default function TransactionsScreen() {
     closeEdit,
   ]);
 
+  /**
+   * Shows a confirmation alert then deletes the selected transaction.
+   */
   const handleDelete = useCallback(async () => {
     if (!selectedTransaction) return;
     Alert.alert("Delete transaction?", "This can't be undone.", [
@@ -160,15 +190,22 @@ export default function TransactionsScreen() {
     ]);
   }, [selectedTransaction, loadTransactions, closeEdit]);
 
+  /**
+   * Handles date picker value changes.
+   * On Android, closes the picker after selection since it auto-dismisses.
+   */
   const onDateChange = useCallback((_event: unknown, selected?: Date) => {
     if (Platform.OS === "android") setDatePickerOpen(false);
     if (selected) setDraftDate(selected);
   }, []);
 
+  // ─── JSX ───────────────────────────────────────────────────────────────────
+
   return (
-    <LinearGradient colors={["#0a0f1e", "#000000"]} style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.header}>Transactions</Text>
 
+      {/* ── Empty State ── */}
       {transactions.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>🧾</Text>
@@ -176,6 +213,7 @@ export default function TransactionsScreen() {
           <Text style={styles.emptySubText}>Add one from the Add tab</Text>
         </View>
       ) : (
+        /* ── Transaction List ── */
         <FlatList
           data={transactions}
           keyExtractor={(item) => item.id}
@@ -196,6 +234,7 @@ export default function TransactionsScreen() {
               </View>
               <View style={styles.cardRight}>
                 <Text style={styles.cardAmount}>${item.amount.toFixed(2)}</Text>
+                {/* Colored account type badge */}
                 <View
                   style={[
                     styles.accountBadge,
@@ -218,7 +257,7 @@ export default function TransactionsScreen() {
         />
       )}
 
-      {/* Edit Modal */}
+      {/* ── Edit Modal ── */}
       <Modal
         visible={isEditOpen}
         animationType="slide"
@@ -249,46 +288,20 @@ export default function TransactionsScreen() {
             />
 
             <Text style={styles.inputLabel}>Category</Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginBottom: 24,
-                width: "100%",
-              }}
+            <Pressable
+              style={styles.input}
+              onPress={() => setCategoryOpen(true)}
             >
-              <Pressable
-                style={styles.input}
-                onPress={() => setCategoryOpen(true)}
+              <Text
+                style={
+                  draftCategory ? styles.inputValue : styles.inputPlaceholder
+                }
               >
-                <Text
-                  style={
-                    draftCategory ? styles.inputValue : styles.inputPlaceholder
-                  }
-                >
-                  {draftCategory
-                    ? `${CATEGORY_EMOJI[draftCategory]} ${draftCategory}`
-                    : "Select a category"}
-                </Text>
-              </Pressable>
-
-              {draftCategory && (
-                <Pressable
-                  onPress={() => setDraftCategory(null)}
-                  style={{ marginLeft: 12 }}
-                >
-                  <Text
-                    style={{
-                      color: "#ff3b30",
-                      fontSize: 16,
-                      fontWeight: "700",
-                    }}
-                  >
-                    ✕
-                  </Text>
-                </Pressable>
-              )}
-            </View>
+                {draftCategory
+                  ? `${CATEGORY_EMOJI[draftCategory]} ${draftCategory}`
+                  : "Select category"}
+              </Text>
+            </Pressable>
 
             <Text style={styles.inputLabel}>Account</Text>
             <View style={styles.pillRow}>
@@ -332,6 +345,7 @@ export default function TransactionsScreen() {
               />
             )}
 
+            {/* Action buttons */}
             <View style={styles.buttonRow}>
               <Pressable
                 style={[styles.actionBtn, styles.deleteBtn]}
@@ -353,7 +367,7 @@ export default function TransactionsScreen() {
               </Pressable>
             </View>
 
-            {/* Category picker modal */}
+            {/* ── Category Picker Modal (nested) ── */}
             <Modal
               visible={categoryOpen}
               transparent
@@ -388,13 +402,16 @@ export default function TransactionsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </LinearGradient>
+    </View>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#000",
     paddingHorizontal: 16,
     paddingTop: 24,
   },
@@ -460,12 +477,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   input: {
-    flex: 1,
     backgroundColor: "#2c2c2e",
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    marginBottom: 0,
+    marginBottom: 16,
     color: "#fff",
   },
   inputValue: { color: "#fff", fontSize: 16 },

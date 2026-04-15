@@ -10,6 +10,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const CATEGORY_COLORS: Record<string, string> = {
   Groceries: "#30d158",
   Rent: "#ff6b6b",
@@ -36,6 +38,9 @@ const CATEGORY_EMOJI: Record<string, string> = {
   Other: "📦",
 };
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Returns a time-appropriate greeting based on the current hour. */
 function getGreeting(): string {
   const h = new Date().getHours();
   if (h < 12) return "Good morning";
@@ -43,14 +48,24 @@ function getGreeting(): string {
   return "Good evening";
 }
 
+/** Returns the current month name (e.g. "April"). */
 function getMonthName(): string {
   return new Date().toLocaleString("en-US", { month: "long" });
 }
 
+// ─── Screen ──────────────────────────────────────────────────────────────────
+
 export default function HomeScreen() {
+  // ─── State ───────────────────────────────────────────────────────────────
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
 
+  // ─── Data Loading ─────────────────────────────────────────────────────────
+
+  /**
+   * Loads transactions and budgets in parallel.
+   * Called on screen focus so data is always up to date.
+   */
   const loadData = useCallback(async () => {
     const [allTransactions, allBudgets] = await Promise.all([
       getAllTransactions(),
@@ -66,7 +81,9 @@ export default function HomeScreen() {
     }, [loadData]),
   );
 
-  // Filter to current month only
+  // ─── Derived Data ─────────────────────────────────────────────────────────
+
+  // Filter transactions to the current month only
   const now = new Date();
   const monthlyTxs = transactions.filter((tx) => {
     const d = new Date(tx.date);
@@ -75,75 +92,92 @@ export default function HomeScreen() {
     );
   });
 
+  // Total spent this month
   const totalSpent = monthlyTxs.reduce((sum, tx) => sum + tx.amount, 0);
 
-  // Tally by category
+  // Spending tallied by category
   const byCategory: Record<string, number> = {};
   for (const tx of monthlyTxs) {
     byCategory[tx.category] = (byCategory[tx.category] ?? 0) + tx.amount;
   }
+
+  // Categories sorted by spend descending for bar chart and donut
   const sortedCategories = Object.entries(byCategory).sort(
     (a, b) => b[1] - a[1],
   );
-  const maxAmount = sortedCategories[0]?.[1] ?? 1;
-  const chartData = sortedCategories.map(([category, amount]) => {
-    // changes shape from array to object, acts as a "slice" in pie chart
-    return {
-      label: category,
-      value: amount,
-      color: CATEGORY_COLORS[category],
-    };
-  });
 
+  // Largest category spend — used to scale bar widths
+  const maxAmount = sortedCategories[0]?.[1] ?? 1;
+
+  // Data shaped for the DonutChart component
+  const chartData = sortedCategories.map(([category, amount]) => ({
+    label: category,
+    value: amount,
+    color: CATEGORY_COLORS[category],
+  }));
+
+  // Overall budget row (if set by the user)
   const overallBudget = budgets.find((b) => b.category === "overall");
 
+  // ─── Bar Color Logic ──────────────────────────────────────────────────────
+
+  /**
+   * Returns a color for a category's spending bar based on budget status.
+   * - No budget set → default category color
+   * - Under threshold → green
+   * - At or above threshold but under limit → yellow
+   * - At or above limit → red
+   *
+   * @param cat - the category name to evaluate
+   */
   function getBarColor(cat: string): string {
     let color = CATEGORY_COLORS[cat] ?? "#98989d";
     const budget = budgets.find((b) => b.category === cat);
-    if (!budget) {
-      return color;
-    }
-    let thresholdDollarAmount = (budget.amount * budget.threshold) / 100;
+    if (!budget) return color;
+
+    const thresholdDollarAmount = (budget.amount * budget.threshold) / 100;
 
     if (byCategory[cat] < thresholdDollarAmount) {
-      color = "#30d158";
-    } else if (
-      byCategory[cat] >= thresholdDollarAmount &&
-      byCategory[cat] < budget.amount
-    ) {
-      color = "#ffd60a";
-    } else if (byCategory[cat] >= budget.amount) {
-      color = "#ff3b30";
+      color = "#30d158"; // green — under warning threshold
+    } else if (byCategory[cat] < budget.amount) {
+      color = "#ffd60a"; // yellow — past threshold but not over limit
+    } else {
+      color = "#ff3b30"; // red — over budget
     }
     return color;
   }
 
+  // ─── JSX ─────────────────────────────────────────────────────────────────
+
   return (
     <LinearGradient colors={["#0a0f1e", "#000000"]} style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Greeting */}
+        {/* ── Greeting ── */}
         <Text style={styles.greeting}>{getGreeting()}</Text>
         <Text style={styles.subGreeting}>
           Here's your {getMonthName()} so far
         </Text>
 
-        {/* Hero card */}
+        {/* ── Hero Card — total monthly spend ── */}
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Total Spent</Text>
-          <Text style={styles.heroAmount}>${totalSpent.toFixed(2)}</Text>
+          <Text style={styles.heroAmount}>
+            ${totalSpent.toFixed(2)}
+            {overallBudget ? ` / $${overallBudget.amount.toFixed(2)}` : ""}
+          </Text>
           <Text style={styles.heroSub}>
             {monthlyTxs.length} transaction{monthlyTxs.length !== 1 ? "s" : ""}{" "}
             this month
           </Text>
         </View>
 
-        {/* Category breakdown */}
+        {/* ── Category Breakdown — bars + donut chart ── */}
         {sortedCategories.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Spending by Category</Text>
+
             {sortedCategories.map(([cat, amount]) => {
               const pct = amount / maxAmount;
-              const color = CATEGORY_COLORS[cat] ?? "#98989d";
               return (
                 <View key={cat} style={styles.catRow}>
                   <Text style={styles.catEmoji}>
@@ -169,13 +203,15 @@ export default function HomeScreen() {
                 </View>
               );
             })}
+
+            {/* Donut chart summary below the bars */}
             <View style={styles.chartContainer}>
               <DonutChart data={chartData} size={220} strokeWidth={40} />
             </View>
           </View>
         )}
 
-        {/* Empty state */}
+        {/* ── Empty State ── */}
         {monthlyTxs.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>💸</Text>
@@ -192,10 +228,12 @@ export default function HomeScreen() {
   );
 }
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  chartContainer: { alignItems: "center", marginTop: 16 },
   content: { padding: 24, paddingBottom: 48 },
+  chartContainer: { alignItems: "center", marginTop: 16 },
 
   greeting: { fontSize: 28, fontWeight: "700", color: "#fff", marginTop: 16 },
   subGreeting: {

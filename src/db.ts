@@ -1,5 +1,10 @@
 // src/db.ts
+// SQLite storage layer for iOS and Android.
+// On web, Expo automatically uses db.web.ts instead.
+
 import * as SQLite from "expo-sqlite";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export type AccountType = "debit" | "credit" | "cash";
 
@@ -13,16 +18,19 @@ export type Transaction = {
 };
 
 export type Budget = {
-  category: string;
-  amount: number;
-  threshold: number;
+  category: string; // category name or "overall" for the total budget
+  amount: number; // spending limit in dollars
+  threshold: number; // warning threshold as a percentage (0–100)
 };
+
+// ─── Database Instance ────────────────────────────────────────────────────────
 
 let db: SQLite.SQLiteDatabase | null = null;
 
 /**
- * Opens (or creates) the database and ensures the schema exists.
- * Call this once at app startup.
+ * Opens (or creates) the SQLite database and ensures all tables exist.
+ * Uses WAL journaling mode for better performance.
+ * Should be called once at app startup in the root layout.
  */
 export async function initDb(): Promise<void> {
   if (!db) {
@@ -49,6 +57,10 @@ export async function initDb(): Promise<void> {
   `);
 }
 
+/**
+ * Returns the active database instance.
+ * Throws if initDb() has not been called first.
+ */
 function getDb(): SQLite.SQLiteDatabase {
   if (!db) {
     throw new Error("Database not initialized. Call initDb() first.");
@@ -56,6 +68,12 @@ function getDb(): SQLite.SQLiteDatabase {
   return db;
 }
 
+// ─── Transaction CRUD ─────────────────────────────────────────────────────────
+
+/**
+ * Inserts a new transaction into the database.
+ * @param tx - the transaction to insert
+ */
 export async function addTransaction(tx: Transaction): Promise<void> {
   const d = getDb();
   await d.runAsync(
@@ -65,6 +83,9 @@ export async function addTransaction(tx: Transaction): Promise<void> {
   );
 }
 
+/**
+ * Returns all transactions sorted by date descending (newest first).
+ */
 export async function getAllTransactions(): Promise<Transaction[]> {
   const d = getDb();
   const rows = await d.getAllAsync<Transaction>(
@@ -75,11 +96,19 @@ export async function getAllTransactions(): Promise<Transaction[]> {
   return rows;
 }
 
+/**
+ * Deletes a transaction by its unique ID.
+ * @param id - the UUID of the transaction to delete
+ */
 export async function deleteTransaction(id: string): Promise<void> {
   const d = getDb();
   await d.runAsync(`DELETE FROM transactions WHERE id = ?`, [id]);
 }
 
+/**
+ * Updates all fields of an existing transaction.
+ * @param tx - the transaction with updated values (id must match an existing row)
+ */
 export async function updateTransaction(tx: Transaction): Promise<void> {
   const d = getDb();
   await d.runAsync(
@@ -90,6 +119,14 @@ export async function updateTransaction(tx: Transaction): Promise<void> {
   );
 }
 
+// ─── Budget CRUD ──────────────────────────────────────────────────────────────
+
+/**
+ * Inserts or replaces a budget for a given category.
+ * Since category is the primary key, saving over an existing one updates it.
+ * Use category "overall" for the total monthly budget.
+ * @param tx - the budget to save
+ */
 export async function setBudget(tx: Budget): Promise<void> {
   const d = getDb();
   await d.runAsync(
@@ -99,6 +136,9 @@ export async function setBudget(tx: Budget): Promise<void> {
   );
 }
 
+/**
+ * Returns all budgets sorted by amount descending.
+ */
 export async function getBudgets(): Promise<Budget[]> {
   const d = getDb();
   const rows = await d.getAllAsync<Budget>(
@@ -109,6 +149,10 @@ export async function getBudgets(): Promise<Budget[]> {
   return rows;
 }
 
+/**
+ * Deletes a budget by category.
+ * @param category - the category key to delete (e.g. "Dining" or "overall")
+ */
 export async function removeBudget(category: string): Promise<void> {
   const d = getDb();
   await d.runAsync(`DELETE FROM budgets WHERE category = ?`, [category]);
