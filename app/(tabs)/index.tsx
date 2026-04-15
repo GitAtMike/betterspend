@@ -107,6 +107,7 @@ export default function HomeScreen() {
   );
 
   // ─── Handlers ─────────────────────────────────────────────────────────
+  const now = new Date();
 
   const handleExport = useCallback(async () => {
     let filtered: Transaction[];
@@ -158,7 +159,6 @@ export default function HomeScreen() {
   // ─── Derived Data ─────────────────────────────────────────────────────────
 
   // Filter transactions to the current month only
-  const now = new Date();
   const monthlyTxs = transactions.filter((tx) => {
     const d = new Date(tx.date);
     return (
