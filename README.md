@@ -10,6 +10,11 @@ A cross-platform personal finance tracker built with React Native, Expo, and Typ
 - View all transactions sorted by date, newest first
 - Edit or delete any transaction via a slide-up modal
 - Date picker for editing transaction dates
+- Home dashboard with total monthly spending and category breakdown
+- Donut chart visualizing spending by category
+- Budget management — set an overall budget and per-category budgets with warning thresholds
+- Color-coded spending bars (green/yellow/red) based on budget thresholds
+- All data is stored locally on-device — no accounts, no cloud, no data sharing
 - Persistent storage — SQLite on mobile, localStorage on web
 - Dark mode support via system color scheme
 - Haptic feedback on tab navigation (iOS/Android)
@@ -28,6 +33,8 @@ A cross-platform personal finance tracker built with React Native, Expo, and Typ
 | Navigation        | Expo Router file-based tabs                   |
 | Icons             | SF Symbols via `@expo/vector-icons`           |
 | Date Picker       | `@react-native-community/datetimepicker`      |
+| Charts            | react-native-svg (custom donut chart)         |
+| Sliders           | `@react-native-community/slider`              |
 
 ---
 
@@ -40,13 +47,15 @@ betterspend/
 │   ├── modal.tsx            # Modal screen
 │   └── (tabs)/
 │       ├── _layout.tsx      # Tab bar configuration
-│       ├── index.tsx        # Home screen
+│       ├── index.tsx        # Home dashboard — spending summary + donut chart
 │       ├── add.tsx          # Add transaction screen
-│       └── transactions.tsx # Transaction list + edit modal
+│       ├── transactions.tsx # Transaction list + edit modal
+│       └── budget.tsx       # Budget management screen
 ├── src/
 │   ├── db.ts                # SQLite layer (iOS/Android)
 │   └── db.web.ts            # localStorage layer (web — auto-selected by Expo)
-├── components/              # Shared UI components
+├── components/
+│   └── DonutChart.tsx       # Custom SVG donut chart component
 ├── constants/
 │   └── theme.ts             # Color tokens
 ├── hooks/                   # Custom hooks (useColorScheme, etc.)
@@ -93,7 +102,9 @@ BetterSpend uses a platform-specific storage strategy:
 - **iOS/Android** — SQLite via `expo-sqlite` with WAL journaling for performance
 - **Web** — `localStorage` via `src/db.web.ts`, automatically selected by Expo's Metro bundler
 
-Both layers expose the same async API (`initDb`, `addTransaction`, `getAllTransactions`, `updateTransaction`, `deleteTransaction`), so all screens work identically across platforms with no conditional logic in the UI.
+Both layers expose the same async API (`initDb`, `addTransaction`, `getAllTransactions`, `updateTransaction`, `deleteTransaction`, `setBudget`, `getBudgets`, `removeBudget`), so all screens work identically across platforms with no conditional logic in the UI.
+
+All data is stored locally on the user's device. No accounts are required and no data is transmitted to any server.
 
 ---
 
@@ -106,6 +117,8 @@ Groceries, Rent, Dining, Gas, Entertainment, Utilities, Shopping, Travel, Health
 ## Roadmap
 
 - [x] Spending summary and charts by category
-- [ ] Monthly budget limits with alerts
+- [x] Monthly budget limits with warning thresholds
+- [x] Color-coded budget warnings on home screen
+- [ ] Overall budget progress on hero card
 - [ ] CSV export
 - [ ] Bank sync via Plaid
