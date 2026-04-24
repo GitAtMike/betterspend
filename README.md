@@ -121,7 +121,7 @@ Groceries, Rent, Dining, Gas, Entertainment, Utilities, Shopping, Travel, Health
 - [x] Color-coded budget warnings on home screen
 - [x] Overall budget progress on hero card
 - [x] CSV export
-- [ ] Month-over-month spending comparison
+- [x] Month-over-month spending comparison
 - [ ] Push notifications for budget warnings
 - [ ] Recurring transactions
 - [ ] Multiple named accounts
