@@ -329,12 +329,42 @@ export default function TransactionsScreen() {
             </View>
 
             <Text style={styles.inputLabel}>Date</Text>
-            <Pressable
-              style={styles.input}
-              onPress={() => setDatePickerOpen(true)}
-            >
-              <Text style={styles.inputValue}>{formattedDraftDate}</Text>
-            </Pressable>
+            {Platform.OS === "web" ? (
+              <input
+                type="date"
+                value={draftDate instanceof Date && !isNaN(draftDate.getTime()) 
+                  ? draftDate.toISOString().split("T")[0] 
+                  : ""}
+                  onChange={(e) => {
+                    const [year, month, day] = e.target.value.split("-").map(Number);
+                    setDraftDate(new Date(year, month - 1, day));
+                  }}
+                style={{
+                  backgroundColor: "#2c2c2e",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: 14,
+                  fontSize: 16,
+                  width: "100%",
+                  marginBottom: 16,
+                }}
+              />
+            ) : (
+              <>
+                <Pressable style={styles.input} onPress={() => setDatePickerOpen(true)}>
+                  <Text style={styles.inputValue}>{formattedDraftDate}</Text>
+                </Pressable>
+                {datePickerOpen && (
+                  <DateTimePicker
+                    value={draftDate}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    onChange={onDateChange}
+                  />
+                )}
+              </>
+            )}
 
             {datePickerOpen && (
               <DateTimePicker
