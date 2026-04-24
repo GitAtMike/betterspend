@@ -84,6 +84,7 @@ export default function HomeScreen() {
   const [exportRange, setExportRange] = useState<"month" | "3months" | "all">(
     "month",
   );
+  const [comparisonOpen, setComparisonOpen] = useState(false);
 
   // ─── Data Loading ─────────────────────────────────────────────────────────
 
@@ -166,14 +167,44 @@ export default function HomeScreen() {
     );
   });
 
+  // Filter transactions to the last month only
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthTxs = transactions.filter((tx) => {
+    const d = new Date(tx.date);
+    return (
+      d.getMonth() === lastMonth.getMonth() &&
+      d.getFullYear() === lastMonth.getFullYear()
+    )
+  })
+
   // Total spent this month
   const totalSpent = monthlyTxs.reduce((sum, tx) => sum + tx.amount, 0);
 
-  // Spending tallied by category
+  // Total spent this month
+  const lastMonthSpent = lastMonthTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
+  // Percent Change
+  const percentChange = lastMonthSpent === 0 
+    ? null 
+    : ((totalSpent - lastMonthSpent) / lastMonthSpent) * 100;
+
+  // Spending tallied by category of current month
   const byCategory: Record<string, number> = {};
   for (const tx of monthlyTxs) {
     byCategory[tx.category] = (byCategory[tx.category] ?? 0) + tx.amount;
   }
+
+  // Spending tallied by category of last month
+  const byLastMonthCategory: Record<string, number> = {};
+  for (const tx of lastMonthTxs) {
+    byLastMonthCategory[tx.category] = (byLastMonthCategory[tx.category] ?? 0) + tx.amount;
+  }
+
+  // All categories spent combined
+  const allCategories = [...new Set([
+    ...Object.keys(byCategory),
+    ...Object.keys(byLastMonthCategory),
+  ])];
 
   // Categories sorted by spend descending
   const sortedCategories = Object.entries(byCategory).sort(
@@ -235,6 +266,57 @@ export default function HomeScreen() {
             this month
           </Text>
         </View>
+
+         {/* ── Month Comparison ── */}
+          <View style={styles.comparisonSection}>
+            <Pressable onPress={() => setComparisonOpen(!comparisonOpen)} style={styles.comparisonButton}>
+              <Text style={styles.comparisonButtonText}>
+                {comparisonOpen ? "Hide Comparison" : "View Last Month"}
+              </Text>
+            </Pressable>
+            {comparisonOpen && (
+              <View style={styles.comparisonContent}>
+                {/* Totals row */}
+                <View style={styles.comparisonTotals}>
+                  <View style={styles.comparisonTotal}>
+                    <Text style={styles.comparisonTotalLabel}>Last Month</Text>
+                    <Text style={styles.comparisonTotalAmount}>${lastMonthSpent.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.comparisonDivider} />
+                  <View style={styles.comparisonTotal}>
+                    <Text style={styles.comparisonTotalLabel}>This Month</Text>
+                    <Text style={styles.comparisonTotalAmount}>${totalSpent.toFixed(2)}</Text>
+                  </View>
+                </View>
+
+                {/* Percentage change */}
+                {percentChange !== null && (
+                  <Text style={[styles.comparisonChange, { color: percentChange > 0 ? "#ff3b30" : "#30d158" }]}>
+                    {percentChange > 0 ? "↑" : "↓"} {Math.abs(percentChange).toFixed(1)}% {percentChange > 0 ? "more" : "less"} than last month
+                  </Text>
+                )}
+                {/* Headers */}
+                <View style={[styles.comparisonCatRow, { marginTop: 12 }]}>
+                  <Text style={styles.catEmoji}>{""}</Text>
+                  <Text style={[styles.catName, { flex: 1 }]}>{""}</Text>
+                  <Text style={[styles.comparisonCatAmount, { color: "#8e8e93" }]}>Last Month</Text>
+                  <Text style={[styles.comparisonCatAmount, { color: "#8e8e93" }]}>This Month</Text>
+                </View>
+                {allCategories.map((cat) => (
+                  <View key={cat} style={styles.comparisonCatRow}>
+                    <Text style={styles.catEmoji}>{CATEGORY_EMOJI[cat] ?? "📦"}</Text>
+                    <Text style={[styles.catName, { flex: 1 }]}>{cat}</Text>
+                    <Text style={styles.comparisonCatAmount}>
+                      ${(byLastMonthCategory[cat] ?? 0).toFixed(2)}
+                    </Text>
+                    <Text style={styles.comparisonCatAmount}>
+                      ${(byCategory[cat] ?? 0).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
 
         {/* ── Category Breakdown ── */}
         {sortedCategories.length > 0 && (
@@ -328,7 +410,7 @@ export default function HomeScreen() {
             style={styles.modalBackdrop}
             onPress={() => setExportOpen(false)}
           >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Pressable style={styles.modalCard} onPress={() => { }}>
               <Text style={styles.modalTitle}>Export Transactions</Text>
 
               <Text style={styles.label}>Date Range</Text>
@@ -508,4 +590,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   exportSubmitButtonText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  comparisonSection: { marginBottom: 24 },
+  comparisonButton: { backgroundColor: "#1c1c1e", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, alignItems: "center" },
+  comparisonButtonText: { color: "#0a84ff", fontSize: 15, fontWeight: "600" },
+  comparisonContent: { marginTop: 12, backgroundColor: "#1c1c1e", borderRadius: 12, padding: 16 },
+  comparisonTotals: { flexDirection: "row", justifyContent: "space-around", alignItems: "center" },
+  comparisonTotal: { alignItems: "center" },
+  comparisonTotalLabel: { fontSize: 12, color: "#8e8e93", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  comparisonTotalAmount: { fontSize: 24, fontWeight: "700", color: "#fff", marginTop: 4 },
+  comparisonDivider: { width: 1, height: 40, backgroundColor: "#2c2c2e" },
+  comparisonChange: { fontSize: 14, fontWeight: "600", textAlign: "center", marginTop: 12 },
+  comparisonCatRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: 1, borderColor: "#2c2c2e" },
+  comparisonCatAmount: { fontSize: 14, fontWeight: "600", color: "#fff", minWidth: 90, textAlign: "right" },
 });
