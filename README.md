@@ -2,6 +2,8 @@
 
 A cross-platform personal finance tracker built with React Native, Expo, and TypeScript. Log transactions by merchant, amount, category, and account type — with full create, edit, and delete support. Runs on iOS, Android, and web.
 
+**Live Demo:** [https://betterspend.vercel.app](https://betterspend.vercel.app)
+
 ---
 
 ## Features
@@ -12,8 +14,10 @@ A cross-platform personal finance tracker built with React Native, Expo, and Typ
 - Date picker for editing transaction dates
 - Home dashboard with total monthly spending and category breakdown
 - Donut chart visualizing spending by category
+- Month-over-month spending comparison by category
 - Budget management — set an overall budget and per-category budgets with warning thresholds
-- Color-coded spending bars (green/yellow/red) based on budget thresholds
+- Color-coded spending (green/yellow/red) based on budget thresholds
+- CSV export with date range options — works on web and mobile
 - All data is stored locally on-device — no accounts, no cloud, no data sharing
 - Persistent storage — SQLite on mobile, localStorage on web
 - Dark mode support via system color scheme
@@ -35,6 +39,7 @@ A cross-platform personal finance tracker built with React Native, Expo, and Typ
 | Date Picker       | `@react-native-community/datetimepicker`      |
 | Charts            | react-native-svg (custom donut chart)         |
 | Sliders           | `@react-native-community/slider`              |
+| Deployment        | Vercel (auto-deploys on push)                 |
 
 ---
 
@@ -67,21 +72,22 @@ betterspend/
 
 ## Getting Started
 
-### Prerequisites
+### Live Demo
+
+Visit [https://betterspend.vercel.app](https://betterspend.vercel.app) — no installation required.
+
+### Run Locally
+
+**Prerequisites:**
 
 - [Node.js](https://nodejs.org/) 18+
-- [Expo CLI](https://docs.expo.dev/get-started/installation/)
 - [Expo Go](https://expo.dev/client) on your phone (for mobile)
-
-### Install
 
 ```bash
 git clone https://github.com/GitAtMike/betterspend.git
 cd betterspend
 npm install
 ```
-
-### Run
 
 ```bash
 # Mobile (iOS/Android via Expo Go)
@@ -120,8 +126,9 @@ Groceries, Rent, Dining, Gas, Entertainment, Utilities, Shopping, Travel, Health
 - [x] Monthly budget limits with warning thresholds
 - [x] Color-coded budget warnings on home screen
 - [x] Overall budget progress on hero card
-- [x] CSV export
+- [x] CSV export (web + mobile)
 - [x] Month-over-month spending comparison
+- [x] Deployed to Vercel with auto-deploy on push
 - [ ] Push notifications for budget warnings
 - [ ] Recurring transactions
 - [ ] Multiple named accounts
