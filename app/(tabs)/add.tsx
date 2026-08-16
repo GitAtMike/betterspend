@@ -1,4 +1,11 @@
-import { addTransaction, type AccountType, type Transaction } from "@/src/db";
+import {
+  addTransaction,
+  getAllTransactions,
+  getBudgets,
+  type AccountType,
+  type Transaction,
+} from "@/src/db";
+import { sendBudgetNotification } from "@/src/notifications";
 import * as Crypto from "expo-crypto";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -63,6 +70,51 @@ export default function AddScreen() {
   const [account, setAccount] = useState<AccountType>("debit");
   const [categoryOpen, setCategoryOpen] = useState(false);
 
+  const checkBudgetAndNotify = useCallback(async (tx: Transaction) => {
+    const [allTransactions, budgets] = await Promise.all([
+      getAllTransactions(),
+      getBudgets(),
+    ]);
+
+    console.log("budgets:", budgets);
+    console.log("tx.category:", tx.category);
+
+    const budget = budgets.find((b) => b.category === tx.category);
+    console.log("matched budget:", budget);
+    if (!budget) return;
+
+    const now = new Date();
+    const spent = allTransactions
+      .filter((t) => {
+        const d = new Date(t.date);
+        return (
+          t.category === tx.category &&
+          t.id !== tx.id &&
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
+        );
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalBefore = spent;
+    const totalAfter = spent + tx.amount;
+    const warningLimit = (budget.threshold / 100) * budget.amount;
+
+    if (totalBefore < warningLimit && totalAfter >= warningLimit) {
+      await sendBudgetNotification(
+        `${tx.category} Budget Warning`,
+        `You've used ${budget.threshold}% of your ${tx.category} budget.`,
+      );
+    }
+
+    if (totalBefore < budget.amount && totalAfter >= budget.amount) {
+      await sendBudgetNotification(
+        `${tx.category} Budget Exceeded`,
+        `You've gone over your ${tx.category} budget of $${budget.amount}.`,
+      );
+    }
+  }, []);
+
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   /**
@@ -95,6 +147,7 @@ export default function AddScreen() {
       account,
     };
     await addTransaction(tx);
+    await checkBudgetAndNotify(tx);
 
     // Reset form
     setMerchant("");
@@ -103,7 +156,7 @@ export default function AddScreen() {
     setAccount("debit");
 
     router.back();
-  }, [merchant, amount, category, account, router]);
+  }, [merchant, amount, category, account, router, checkBudgetAndNotify]);
 
   // ─── JSX ───────────────────────────────────────────────────────────────────
 

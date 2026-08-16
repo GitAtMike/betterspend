@@ -176,6 +176,17 @@ export default function TransactionsScreen() {
    */
   const handleDelete = useCallback(async () => {
     if (!selectedTransaction) return;
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Delete transaction? This can't be undone.",
+      );
+      if (!confirmed) return;
+      await deleteTransaction(selectedTransaction.id);
+      await loadTransactions();
+      closeEdit();
+      return;
+    }
     Alert.alert("Delete transaction?", "This can't be undone.", [
       { text: "Cancel", style: "cancel" },
       {
@@ -332,13 +343,17 @@ export default function TransactionsScreen() {
             {Platform.OS === "web" ? (
               <input
                 type="date"
-                value={draftDate instanceof Date && !isNaN(draftDate.getTime()) 
-                  ? draftDate.toISOString().split("T")[0] 
-                  : ""}
-                  onChange={(e) => {
-                    const [year, month, day] = e.target.value.split("-").map(Number);
-                    setDraftDate(new Date(year, month - 1, day));
-                  }}
+                value={
+                  draftDate instanceof Date && !isNaN(draftDate.getTime())
+                    ? draftDate.toISOString().split("T")[0]
+                    : ""
+                }
+                onChange={(e) => {
+                  const [year, month, day] = e.target.value
+                    .split("-")
+                    .map(Number);
+                  setDraftDate(new Date(year, month - 1, day));
+                }}
                 style={{
                   backgroundColor: "#2c2c2e",
                   color: "#fff",
@@ -352,7 +367,10 @@ export default function TransactionsScreen() {
               />
             ) : (
               <>
-                <Pressable style={styles.input} onPress={() => setDatePickerOpen(true)}>
+                <Pressable
+                  style={styles.input}
+                  onPress={() => setDatePickerOpen(true)}
+                >
                   <Text style={styles.inputValue}>{formattedDraftDate}</Text>
                 </Pressable>
                 {datePickerOpen && (

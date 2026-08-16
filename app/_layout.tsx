@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { requestNotificationPermission } from "@/src/notifications";
 import { ActivityIndicator, View } from "react-native";
 
 export const unstable_settings = {
@@ -27,6 +28,7 @@ export default function RootLayout() {
       try {
         setDbReady(false);
         await initDb();
+        await requestNotificationPermission();
         console.log("DB initialized");
         if (!cancelled) setDbReady(true);
       } catch (e) {
