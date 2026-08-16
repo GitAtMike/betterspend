@@ -20,9 +20,6 @@ export async function sendBudgetNotification(
   body: string,
 ): Promise<void> {
   if (Platform.OS === "web") {
-    console.log("web notification path hit");
-    console.log("Notification support:", "Notification" in window);
-    console.log("Notification permission:", Notification.permission);
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification(title, { body });
     }

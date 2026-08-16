@@ -76,11 +76,7 @@ export default function AddScreen() {
       getBudgets(),
     ]);
 
-    console.log("budgets:", budgets);
-    console.log("tx.category:", tx.category);
-
     const budget = budgets.find((b) => b.category === tx.category);
-    console.log("matched budget:", budget);
     if (!budget) return;
 
     const now = new Date();
