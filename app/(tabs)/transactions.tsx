@@ -176,11 +176,14 @@ export default function TransactionsScreen() {
    */
   const handleDelete = useCallback(async () => {
     if (!selectedTransaction) return;
+    console.log("handleDelete called");
 
     if (Platform.OS === "web") {
+      console.log("web path");
       const confirmed = window.confirm(
         "Delete transaction? This can't be undone.",
       );
+      console.log("confirmed:", confirmed);
       if (!confirmed) return;
       await deleteTransaction(selectedTransaction.id);
       await loadTransactions();
